@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Security Alert: New Device Login Notification</title>
+</head>
+<body>
+    <p>Dear {{ user_name }},</p>
+
+    <p>We wanted to inform you that a new device has logged into your wHTa Networks account. For your security, we want to ensure that it was you who authorized this login.</p>
+
+    <p><strong>Login Details:</strong></p>
+    <ul>
+        <li>Date and Time: {{ date_time }}</li>
+        <li>Device: {{ device }}</li>
+        <li>Location: {{ location }}</li>
+    </ul>
+
+    <p>If this login was authorized by you, no further action is needed. However, if you do not recognize this activity, please follow these steps immediately:</p>
+    <ul>
+        <li>Change Your Password: <a href="{{ change_password_link }}">Change Password</a></li>
+        <li>Report Unauthorized Access: <a href="{{ support_link }}">Contact Support</a></li>
+        <li>Review Account Activity: <a href="{{ account_activity_link }}">Account Activity</a></li>
+    </ul>
+
+    <p>Your security is our priority, and we are here to assist you with any concerns.</p>
+
+    <p>--<br>
+    wHTa Networks<br>
+    P.O.Box 309-00200 Nairobi | Kenya<br>
+    North Airport Road<br>
+    Emmanuel | Project Lead</p>
+</body>
+</html>

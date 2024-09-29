@@ -33,6 +33,8 @@ ROOT_HOSTCONF = "elearning_proj.hosts"
 # Application definition
 
 INSTALLED_APPS = [
+    "admin_interface",
+    "colorfield",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -52,6 +54,9 @@ INSTALLED_APPS = [
     'payments',
     'user_auth'
 ]
+
+X_FRAME_OPTIONS = "SAMEORIGIN"
+SILENCED_SYSTEM_CHECKS = ["security.W019"]
 
 AUTH_USER_MODEL = 'user_auth.CustomUser'
 

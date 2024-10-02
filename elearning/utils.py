@@ -2,7 +2,7 @@
 from datetime import timedelta
 from django.db.models.functions import TruncMonth
 from django.db.models import Sum, Avg
-from .models import CourseModule, Enrollment, Lesson, UserActivity, LessonAssignment, ModuleAssignment, ModuleProgress, UserProgress
+from .models import CourseModule, Enrollment, Lesson, LessonProgress, UserActivity, LessonAssignment, ModuleAssignment, ModuleProgress, UserProgress
 from django.db.models import Prefetch
 from django.contrib.auth import get_user_model
 
@@ -152,7 +152,42 @@ def calculate_module_progress(user, module):
 
     return progress_percentage
 
+def calculate_user_progress(user, course):
+    modules = CourseModule.objects.filter(course=course)
+    module_progresses = []
+    for module in modules:
+        # Get all lessons for the module
+        lessons = Lesson.objects.filter(module=module)
 
+        # Calculate lesson completion for the user
+        lesson_progress = LessonProgress.objects.filter(user=user, lesson__in=lessons)
+        
+        # Calculate the average lesson progress
+        completed_lessons = lesson_progress.filter(completed=True).count()
+        total_lessons = lessons.count()
+        
+        if total_lessons > 0:
+            lesson_progress_percentage = (completed_lessons / total_lessons) * 100
+        else:
+            lesson_progress_percentage = 0
+
+        # Record module progress
+        module_progresses.append({
+            'module': module.title,
+            'progress': round(lesson_progress_percentage, 2),
+        })
+
+    # Calculate the average module progress
+    if module_progresses:
+        total_module_progress = sum(module['progress'] for module in module_progresses)
+        average_module_progress = total_module_progress / len(module_progresses)
+    else:
+        average_module_progress = 0
+
+    return {
+        'course_progress': round(average_module_progress, 2),
+        'module_progresses': module_progresses,
+    }
 
 
 

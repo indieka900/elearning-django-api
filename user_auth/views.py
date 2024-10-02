@@ -5,7 +5,7 @@ from django.contrib.auth import login
 from rest_framework.permissions import AllowAny
 from django.db import transaction
 from elearning.email_backend import send_email
-from .serializers import UserSerializer
+from .serializers import UserSerializer, UserUpdateSerializer
 #login
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import UserLoginSerializer, TokenSerializer
@@ -176,6 +176,21 @@ class UserProfileView(generics.GenericAPIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class UserUpdateView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        email = request.data.get('email')
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = UserUpdateSerializer(user, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "User updated successfully"}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
 
 class TotalStudentsView(APIView):
     permission_classes = (AllowAny,)

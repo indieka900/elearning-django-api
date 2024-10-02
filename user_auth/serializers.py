@@ -202,6 +202,39 @@ class PasswordResetSerializer(serializers.Serializer):
             logger.error(f'Error sending password reset email: {str(e)}')
             raise serializers.ValidationError('Failed to send password reset email. Please try again later.')
 
+class UserUpdateSerializer(serializers.Serializer):
+    course = serializers.CharField(max_length=100)
+    paymentPlan = serializers.CharField(max_length=100)
+    name = serializers.CharField(max_length=100, required=False)
+    firstName = serializers.CharField(max_length=30)
+    lastName = serializers.CharField(max_length=30)
+    city = serializers.CharField(max_length=100)
+    email = serializers.EmailField()
+    streetaddress = serializers.CharField(max_length=255)
+    phoneNumber = serializers.CharField(max_length=15)
+    country = serializers.CharField(max_length=100)
+    consent = serializers.BooleanField()
+    agree = serializers.BooleanField()
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+    def update(self, instance : CustomUser, validated_data):
+        instance.first_name = validated_data.get('firstName', instance.first_name)
+        instance.last_name = validated_data.get('lastName', instance.last_name)
+        # instance.email = validated_data.get('email', instance.email)
+        instance.phone_number = validated_data.get('phoneNumber', instance.phone_number)
+        instance.save()
+
+        # Update or create Student profile
+        student_profile, created = Student.objects.get_or_create(user=instance)
+        student_profile.country = validated_data.get('country', student_profile.country)
+        student_profile.city = validated_data.get('city', student_profile.city)
+        student_profile.street_address = validated_data.get('streetaddress', student_profile.street_address)
+        student_profile.payment_plan = validated_data.get('paymentPlan', student_profile.payment_plan)
+        student_profile.course = validated_data.get('course', student_profile.course)
+        student_profile.save()
+
+        return instance
+
 class PasswordResetConfirmSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True)
     uid = serializers.CharField()
@@ -304,8 +337,11 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     def get_course(self, obj):
         student = Student.objects.get(user=obj.user)
         enrollment = Enrollment.objects.filter(student=student).first()
+        if student.course != enrollment.course.name:
+            student.course = enrollment.course.name
+            student.save()
         if enrollment:
-            return CourseSerializer(enrollment.course).data
+            return enrollment.course.name
         return None
     
     def update(self, instance, validated_data):

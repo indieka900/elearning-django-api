@@ -27,7 +27,7 @@ from .models import (
 )
 from .send_mails import send_invitation_emails
 from .serializers import (
-    AssignmentSerializer, AssignmentSubmissionSerializer, Assignment_SubmissionSerializer,
+    AssignmentSerializer, AssignmentSubmissionSerializer, Assignment_SubmissionSerializer, CourseModuleSerializer,
     ModuleSerializer, CourseSerializer, CourseProfileSerializer, 
     EnrollmentSerializer, LessonAssignmentSerializer, 
     LessonProgressSerializer, LessonSerializer, 
@@ -39,7 +39,7 @@ from rest_framework.permissions import IsAuthenticated,AllowAny
 from django.db.models import Prefetch
 from .utils import (
     calculate_course_progress, calculate_time_spent,
-    calculate_module_progress, get_monthly_progress, get_weekly_change
+    calculate_module_progress, calculate_user_progress, get_monthly_progress, get_weekly_change
 )
 
 class SubmissionViewSet(ModelViewSet):
@@ -104,13 +104,22 @@ class CourseViewSet(ModelViewSet):
 
             elif user.role == 'Student':
                 student = Student.objects.get(user=user)
-                enrollments = Enrollment.objects.filter(student=student).select_related('course')
+                enrollment = Enrollment.objects.filter(student=student).select_related('course').first()
 
-                if not enrollments:
+                if not enrollment:
                     return Response({"error": "No active enrollment found for this student."}, status=status.HTTP_404_NOT_FOUND)
+                course = enrollment.course
 
-                course_ids = [enrollment.course.id for enrollment in enrollments]
-                courses = Course.objects.prefetch_related('modules__lessons', 'instructor').filter(id__in=course_ids)
+                progress_data = calculate_user_progress(user, course)
+                serializer = CourseDetailSerializer(course, context={'request': request})
+                course_data = serializer.data
+                course_data['course_progress'] = progress_data['course_progress']
+                for module in course_data['modules']:
+                    for module_progress in progress_data['module_progresses']:
+                        if module['title'] == module_progress['module']:
+                            module['progress'] = module_progress['progress']
+
+                return Response(course_data)
 
             else:
                 return Response({"error": "Invalid role."}, status=status.HTTP_400_BAD_REQUEST)
@@ -619,6 +628,7 @@ class AnalyticsDashboard(APIView):
         course_data = CourseSerializer(course).data
         course_data.update(self.get_course_profile(course))
         course_data['modules'] = self.get_modules_data(user, course)
+        course_data['overal_progress'] = calculate_user_progress(user, course)
         course_data['lesson_progress'] = self.get_lesson_progress(user, course)
 
         return {
@@ -627,7 +637,7 @@ class AnalyticsDashboard(APIView):
             'course_enrolled': course_data,
             'total_assignments': Assignment.objects.filter(course=course).count(),
             'completed_assignments': AssignmentSubmission.objects.filter(student=student).count(),
-            'average_module_progress': self.get_average_module_progress(user, course),
+            # 'average_module_progress': self.get_average_module_progress(user, course),
             'monthly_progress': get_monthly_progress(user, course),
             'submission_stats': self.get_submission_stats_by_month(user),
         }
@@ -661,17 +671,30 @@ class AnalyticsDashboard(APIView):
         modules = course.modules.all()
         return [{
             **CourseModuleSerializer(module).data,
-            'progress': ModuleProgressSerializer(ModuleProgress.objects.filter(user=user, module=module).first()).data
+            # 'progress': ModuleProgressSerializer(ModuleProgress.objects.filter(user=user, module=module).first()).data
         } for module in modules]
 
     def get_lesson_progress(self, user : User, course : Course):
-        return LessonProgress.objects.filter(
+        total_lessons = Lesson.objects.filter(module__course=course).count()
+
+        # Get the number of lessons completed by the user from LessonProgress
+        completed_lessons = LessonProgress.objects.filter(
             user=user,
-            lesson__module__course=course
-        ).aggregate(
-            total_lessons=Count('id'),
-            completed_lessons=Count('id', filter=Q(completed=True))
-        )
+            lesson__module__course=course,
+            completed=True
+        ).count()
+
+        # Calculate the completion percentage
+        if total_lessons > 0:
+            completion_percentage = (completed_lessons / total_lessons) * 100
+        else:
+            completion_percentage = 0
+        
+        return {
+            'total_lessons': total_lessons,
+            'completed_lessons': completed_lessons,
+            'completion_percentage': round(completion_percentage, 2),
+        }
 
     def get_default_student_data(self):
         return {

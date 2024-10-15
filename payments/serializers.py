@@ -1,7 +1,7 @@
 from django.conf import settings
 from rest_framework import serializers
 from django.contrib.auth import get_user
-from elearning.models import SubscriptionPlan
+from elearning.models import Course, SubscriptionPlan
 from user_auth.models import CustomUser as User
 from .models import PreSignup, Payment, MpesaCallback
 from .mpesa_client import MpesaClient
@@ -49,8 +49,8 @@ class TransactionSerializer(serializers.ModelSerializer):
     def get_course_name(self, obj):
         if obj.service_type == 'course':
             try:
-                subscription_plan = SubscriptionPlan.objects.get(id=obj.service_id)
-                return subscription_plan.course.name
-            except SubscriptionPlan.DoesNotExist:
+                course = Course.objects.get(id=obj.service_id)
+                return course.name
+            except Course.DoesNotExist:
                 return None
         return None

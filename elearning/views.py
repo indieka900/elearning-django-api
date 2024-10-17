@@ -67,7 +67,9 @@ class CourseViewSet(ModelViewSet):
         """
         Instantiates and returns the list of permissions that this view requires.
         """
-        if self.action in ['full_detail', 'assignments']:
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            permission_classes = [IsAuthenticated]
+        elif self.action in ['full_detail', 'assignments']:
             permission_classes = [IsAuthenticated]
         else:
             permission_classes = [AllowAny]

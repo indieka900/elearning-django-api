@@ -1,8 +1,5 @@
-from django.conf import settings
 from rest_framework import serializers
-from django.contrib.auth import get_user
-from elearning.models import Course, SubscriptionPlan
-from user_auth.models import CustomUser as User
+from elearning.models import Course
 from .models import PreSignup, Payment, MpesaCallback
 from .mpesa_client import MpesaClient
 

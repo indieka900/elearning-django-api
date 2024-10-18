@@ -74,6 +74,25 @@ class CourseViewSet(ModelViewSet):
         else:
             permission_classes = [AllowAny]
         return [permission() for permission in permission_classes]
+    
+    def perform_create(self, serializer):
+        """
+        Handle course creation.
+        - Admins can assign instructor.
+        - Instructors can only assign themselves.
+        """
+        user = self.request.user
+        if user.role == "Administrator":
+            instructor = serializer.validated_data.get("instructor")
+            if not instructor:
+                raise serializers.ValidationError("Please assign an instructor.")
+        elif user.role == "Instructor":
+            instructor = Instructor.objects.get(user=user)
+            serializer.validated_data["instructor"] = instructor
+        else:
+            raise PermissionDenied("Only administrators or instructors can create courses.")
+        
+        serializer.save()
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def assignments(self, request, pk=None):

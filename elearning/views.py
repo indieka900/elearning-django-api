@@ -95,6 +95,18 @@ class CourseViewSet(ModelViewSet):
         
         serializer.save()
 
+    def perform_update(self, serializer):
+        """
+        Handle course updates.
+        Only admins can update the instructor field.
+        """
+        user = self.request.user
+        if user.role == 'Instructor':
+            if 'instructor' in serializer.validated_data:
+                del serializer.validated_data['instructor']
+        
+        serializer.save()
+        
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def assignments(self, request, pk=None):
         """

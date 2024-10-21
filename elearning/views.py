@@ -84,9 +84,12 @@ class CourseViewSet(ModelViewSet):
         """
         user = self.request.user
         if user.role == "Administrator":
-            instructor = serializer.validated_data.get("instructor")
-            if not instructor:
-                raise serializers.ValidationError("Please assign an instructor.")
+            try:
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except serializers.ValidationError as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            
         elif user.role == "Instructor":
             instructor = Instructor.objects.get(user=user)
             serializer.validated_data["instructor"] = instructor
